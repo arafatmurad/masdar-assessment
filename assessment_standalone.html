@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scoping for Delivery Assessment</title>
+<style>
+  :root{
+    --bg:#faf9f7; --card:#ffffff; --ink:#1c2422; --sub:#5b6b68;
+    --teal:#0e4d46; --orange:#c97a2b; --border:#dce6e3; --radio:#0e4d46;
+    --pill-bg:#eef3f1; --correct:#1a7a4c; --incorrect:#b3413a;
+  }
+  *{box-sizing:border-box;}
+  body{background:var(--bg); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; margin:0;}
+  .wrap{max-width:640px; margin:0 auto; padding:28px 18px 60px;}
+  .eyebrow{color:var(--orange); font-weight:700; font-size:12px; letter-spacing:.08em; text-transform:uppercase;}
+  h1{font-family:Georgia,"Cambria",serif; color:var(--teal); font-size:26px; margin:6px 0 4px;}
+  .sub{color:var(--sub); font-size:14px; line-height:1.5; margin-bottom:20px;}
+  .card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:18px 20px; margin-bottom:16px;}
+  label.field{display:block; font-size:13px; color:var(--sub); margin-bottom:6px;}
+  input[type=text]{width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border); background:transparent; color:var(--ink); font-size:15px;}
+  .qnum{color:var(--teal); font-weight:700; font-size:13px; margin-bottom:6px;}
+  .qtext{font-size:15px; line-height:1.5; margin-bottom:12px;}
+  .opt{display:flex; align-items:flex-start; gap:10px; padding:8px 0; cursor:pointer; font-size:14px; line-height:1.45;}
+  .opt input{margin-top:3px; accent-color:var(--radio);}
+  button{background:var(--teal); color:#fff; border:none; padding:13px 22px; border-radius:8px; font-size:15px; font-weight:600; cursor:pointer; width:100%;}
+  button.secondary{background:var(--pill-bg); color:var(--teal); margin-top:10px;}
+  button:disabled{opacity:.5; cursor:not-allowed;}
+  .score{font-family:Georgia,"Cambria",serif; font-size:40px; color:var(--teal); text-align:center; margin:6px 0;}
+  .scorelabel{text-align:center; color:var(--sub); font-size:13px; margin-bottom:18px;}
+  .review{border-left:3px solid var(--border); padding-left:12px; margin-bottom:16px;}
+  .review.correct{border-left-color:var(--correct);}
+  .review.incorrect{border-left-color:var(--incorrect);}
+  .tag{display:inline-block; font-size:11px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; padding:2px 8px; border-radius:20px; margin-bottom:6px;}
+  .tag.correct{background:var(--correct); color:#fff;}
+  .tag.incorrect{background:var(--incorrect); color:#fff;}
+  .why{color:var(--sub); font-size:13px; margin-top:4px; line-height:1.5;}
+  textarea{width:100%; min-height:130px; border-radius:8px; border:1px solid var(--border); background:var(--pill-bg); color:var(--ink); font-family:ui-monospace,Menlo,monospace; font-size:12px; padding:10px; resize:vertical;}
+  .hint{font-size:12px; color:var(--sub); margin-top:8px; line-height:1.5;}
+  [hidden]{display:none!important;}
+  .stagepill{display:inline-block; background:var(--pill-bg); color:var(--teal); font-size:12px; font-weight:700; padding:3px 10px; border-radius:20px; margin-bottom:10px;}
+  .footer{text-align:center; font-size:11px; color:var(--sub); margin-top:30px;}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="eyebrow">SCOPING FOR DELIVERY WORKSHOP</div>
+  <span class="stagepill" id="stagePill">ASSESSMENT</span>
+  <h1 id="pageTitle">Assessment</h1>
+  <div class="sub" id="pageSub">10 questions. Pick the best answer for each, then submit to see your score and the reasoning behind every answer.</div>
+
+  <div id="startScreen">
+    <div class="card">
+      <label class="field">Full name (required)</label>
+      <input type="text" id="nameInput" placeholder="e.g., Fatima Al Suwaidi" required>
+      <div class="hint" id="nameError" style="color:var(--incorrect); display:none;">Please enter your full name before starting.</div>
+    </div>
+    <button id="beginBtn">Start assessment</button>
+  </div>
+
+  <form id="quizForm" hidden></form>
+  <button id="submitBtn" hidden>Submit answers</button>
+
+  <div id="resultsScreen" hidden>
+    <div class="card" style="text-align:center;">
+      <div class="score" id="scoreOut">0/10</div>
+      <div class="scorelabel">correct</div>
+    </div>
+    <div id="reviewList"></div>
+    <div class="card">
+      <div class="field" style="margin-bottom:8px; font-weight:600; color:var(--ink);">Send your result to your facilitator</div>
+      <div class="hint">Tap the button below, it opens your email app with your result already filled in. Just hit send.</div>
+      <button id="emailBtn">Send by email</button>
+      <div class="hint" style="margin-top:14px;">If your email app doesn't open automatically, copy this instead and send it yourself:</div>
+      <textarea id="summaryBox" readonly></textarea>
+      <button class="secondary" id="copyBtn">Copy summary</button>
+    </div>
+  </div>
+  <div class="footer">Scoping for Delivery &middot; Masdar City Workshop</div>
+</div>
+
+<script>
+const QUESTIONS = [
+  {q:'A package has an exact technical method that has not been decided, but the required outcome can be measured and stated as a standard. The underlying technology is also still evolving elsewhere in the market. Applying the decision tree exactly as specified, including its "stop at the first yes" rule, which SOW type is correct?',
+   options:['Level-of-Effort, because evolving technology means the scope is not firm',
+            'Performance-Based, because the tree stops at question two once a measurable outcome can be defined',
+            'Design/Detail, because the standard itself is fixed and known',
+            'A hybrid combining Design/Detail and Level-of-Effort, split by subsystem'],
+   answer:1,
+   why:'The tree instructs stopping at the first "yes." Once a measurable outcome can be defined, at question two, the path resolves at Performance-Based. The technology\'s evolving state elsewhere in the market does not reopen the question.'},
+  {q:'Under a Performance-Based SOW, where does the decision tool place risk ownership?',
+   options:['Entirely with the Owner, because they defined the standard',
+            'Entirely with the contractor, because they chose the method',
+            'Shared: the contractor owns method risk, the Owner owns outcome-definition risk',
+            'With whichever party signs the change-control approval'],
+   answer:2,
+   why:'The Performance-Based row splits risk explicitly: the contractor owns the method it chose, and the Owner owns whether the standard it wrote was the right one to specify.'},
+  {q:'The Governance RACI table assigns three separate "Accountable" designations, split by impact type, to a single "Approve scope changes" activity. What is the stated reason for this structure?',
+   options:['It is an error meant to be corrected during the integration exercise',
+            'No single function is sole Accountable owner; that is deliberate, and it is why the integration work exists',
+            'RACI tables should never assign more than one Accountable owner, so this is a placeholder',
+            'Business always holds ultimate accountability for scope changes, regardless of type'],
+   answer:1,
+   why:'The RACI table\'s own footnote states this directly: no single function is sole Accountable owner, which is deliberate, and the reason the integration exercise exists.'},
+  {q:'The workshop pairs each Denver International Airport root cause with the specific SOW discipline that would have caught it. Which pairing below is the one the deck actually makes?',
+   options:['Capacity assumptions were never stress-tested against real baggage volumes, caught by "Objectives & Background must be agreed before deliverables are locked"',
+            'A fixed scope, schedule, and budget arrangement blocked simulation and testing, caught by "acceptance criteria tied to a named verification method, before go-live, not after"',
+            'System design began after construction was underway, caught by "Assumptions & Exclusions, explicitly reviewed and challenged"',
+            'An unproven, ten-times-larger system was locked into a fixed design/detail scope, caught by "a tiered change-control table"'],
+   answer:1,
+   why:'Only the fixed-scope-and-budget row maps to the acceptance-criteria fix in the deck\'s own side-by-side table. The other options pair a real root cause with a fix drawn from a different row.'},
+  {q:'Per the illustrative bid-evaluation weighting, what is the maximum combined percentage that "Objectives & Background" and "Assumptions & Exclusions" could carry together, versus the minimum weight assigned to "Deliverables & Acceptance Criteria" alone?',
+   options:['25% combined maximum, versus a 25% minimum for Deliverables & Acceptance Criteria, meaning they could be weighted equally at the low end',
+            '20% combined maximum, exceeding Deliverables & Acceptance Criteria\'s minimum of 15%',
+            '25% combined maximum, which is always less than Deliverables & Acceptance Criteria regardless of where each range falls',
+            '35% combined maximum, exceeding Deliverables & Acceptance Criteria\'s maximum'],
+   answer:0,
+   why:'10% (Assumptions & Exclusions, a fixed figure) plus a maximum of 15% (Objectives & Background) equals 25%, exactly the minimum of the 25 to 35% range assigned to Deliverables & Acceptance Criteria.'},
+  {q:'Which of the following, if written into a live Project Meridian SOW, would most likely be miscategorized as a milestone when the workshop\'s framework would actually classify it as an outcome?',
+   options:['"Solar PV system installed and interconnected by June 1"',
+            '"Building achieves net-zero certification maintained through year one of tenant occupancy, evidenced by utility billing data"',
+            '"Structural core reaches Level 4 by March 15"',
+            '"MEP commissioning report delivered to the Owner"'],
+   answer:1,
+   why:'A sustained, verified result over time is the business result the deliverable was meant to produce, the deck\'s own definition of an outcome. Its date-like phrasing is what makes it easy to mistake for a milestone.'},
+  {q:'Per the supplier performance scorecard, which of the six universal SOW blocks is never named as a direct feeder for any scorecard category?',
+   options:['Objectives & Background','Deliverables','Milestones & Schedule','Governance & Change Control'],
+   answer:1,
+   why:'Acceptance Criteria, Milestones & Schedule, Assumptions & Exclusions, Objectives, and Governance & Change Control each appear explicitly as a feeder. Deliverables, the block naming the output and its owner, never appears on either side of that table.'},
+  {q:'Which SOW type is defined as buying a defined amount of expert time or resources rather than a fixed output, recommended for advisory or R&D work, as distinct from a Statement of Objectives?',
+   options:['Design/Detail SOW','Performance-Based SOW','Level-of-Effort SOW','Statement of Objectives (SOO)'],
+   answer:2,
+   why:'Level-of-Effort is defined as buying time and expertise against an output that is not fixed. An SOO is a different kind of document entirely: a brief inviting a vendor\'s proposed approach, not a SOW type.'},
+  {q:'A Business team wants a contract exhibit for outsourced facilities-management services, written so it specifies the performance standard the contractor must meet rather than exact tasks. Which document type fits, per the four-document comparison table?',
+   options:['Statement of Work (SOW), because it is the standard exhibit for any procurement contract',
+            'Performance Work Statement (PWS), because it is a services-procurement exhibit written as outcomes, answering what standard performance must meet',
+            'Statement of Objectives (SOO), because it invites the vendor to propose their own approach',
+            'Project Scope Statement, because it documents deliverables and success criteria'],
+   answer:1,
+   why:'The four-document comparison table assigns "a contract exhibit for services procurement, written as outcomes" specifically to the Performance Work Statement.'},
+  {q:'Which statement most precisely describes how the workshop resolves the "who owns change control" tension, as distinct from what the RACI table does on its own?',
+   options:['The RACI table\'s three Accountable assignments (schedule, cost, outcome) are sufficient on their own; no separate threshold structure is needed',
+            'A tiered table adds cost, schedule, and outcome thresholds on top of the RACI\'s split accountability, so only changes crossing a defined threshold require joint sign-off across functions',
+            'Change-control authority defaults to Procurement, since they run sourcing and hold the contract',
+            'Every scope change is automatically escalated to joint sign-off regardless of size, to avoid ambiguity about which function is Accountable'],
+   answer:1,
+   why:'The RACI table assigns accountability by impact type; the tiered change-control table is the separate mechanism deciding when a change is big enough to require joint sign-off. Neither replaces the other.'}
+];
+
+const params = new URLSearchParams(location.search);
+const stage = (params.get('stage') || 'pre').toLowerCase() === 'post' ? 'post' : 'pre';
+document.getElementById('stagePill').textContent = stage === 'post' ? 'POST-COURSE' : 'PRE-COURSE';
+document.getElementById('pageTitle').textContent = stage === 'post' ? 'Post-course assessment' : 'Pre-course assessment';
+document.getElementById('pageSub').textContent = stage === 'post'
+  ? 'Same 10 questions as the pre-course check. Answer to the best of your ability based on today\'s workshop.'
+  : '10 questions to establish your starting point before the workshop begins. There is no penalty for not knowing an answer yet.';
+
+let participantName = '';
+
+document.getElementById('beginBtn').addEventListener('click', () => {
+  const name = document.getElementById('nameInput').value.trim();
+  if (!name) {
+    document.getElementById('nameError').style.display = 'block';
+    document.getElementById('nameInput').focus();
+    return;
+  }
+  participantName = name;
+  document.getElementById('startScreen').hidden = true;
+  renderQuiz();
+});
+
+function renderQuiz(){
+  const form = document.getElementById('quizForm');
+  form.hidden = false;
+  QUESTIONS.forEach((item, qi) => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    const num = document.createElement('div');
+    num.className = 'qnum';
+    num.textContent = 'Question ' + (qi + 1) + ' of ' + QUESTIONS.length;
+    const text = document.createElement('div');
+    text.className = 'qtext';
+    text.textContent = item.q;
+    card.appendChild(num);
+    card.appendChild(text);
+    item.options.forEach((opt, oi) => {
+      const label = document.createElement('label');
+      label.className = 'opt';
+      const input = document.createElement('input');
+      input.type = 'radio';
+      input.name = 'q' + qi;
+      input.value = oi;
+      const span = document.createElement('span');
+      span.textContent = String.fromCharCode(65 + oi) + '. ' + opt;
+      label.appendChild(input);
+      label.appendChild(span);
+      card.appendChild(label);
+    });
+    form.appendChild(card);
+  });
+  const submitBtn = document.getElementById('submitBtn');
+  submitBtn.hidden = false;
+  submitBtn.addEventListener('click', gradeQuiz);
+}
+
+function gradeQuiz(){
+  const form = document.getElementById('quizForm');
+  const answers = QUESTIONS.map((_, qi) => {
+    const checked = form.querySelector('input[name="q' + qi + '"]:checked');
+    return checked ? parseInt(checked.value, 10) : null;
+  });
+  let score = 0;
+  answers.forEach((a, i) => { if (a === QUESTIONS[i].answer) score++; });
+
+  form.hidden = true;
+  document.getElementById('submitBtn').hidden = true;
+  document.getElementById('resultsScreen').hidden = false;
+  document.getElementById('scoreOut').textContent = score + '/' + QUESTIONS.length;
+
+  const reviewList = document.getElementById('reviewList');
+  QUESTIONS.forEach((item, i) => {
+    const correct = answers[i] === item.answer;
+    const div = document.createElement('div');
+    div.className = 'card review ' + (correct ? 'correct' : 'incorrect');
+    const tag = document.createElement('span');
+    tag.className = 'tag ' + (correct ? 'correct' : 'incorrect');
+    tag.textContent = correct ? 'Correct' : 'Review this one';
+    const qline = document.createElement('div');
+    qline.style.fontWeight = '600';
+    qline.style.fontSize = '14px';
+    qline.style.margin = '6px 0';
+    qline.textContent = 'Q' + (i + 1) + ': ' + item.q;
+    const ansline = document.createElement('div');
+    ansline.style.fontSize = '13px';
+    ansline.style.color = 'var(--sub)';
+    const yourLetter = answers[i] === null ? 'no answer' : String.fromCharCode(65 + answers[i]);
+    const correctLetter = String.fromCharCode(65 + item.answer);
+    ansline.textContent = 'Your answer: ' + yourLetter + (correct ? '' : '  |  Correct answer: ' + correctLetter);
+    const why = document.createElement('div');
+    why.className = 'why';
+    why.textContent = item.why;
+    div.appendChild(tag);
+    div.appendChild(qline);
+    div.appendChild(ansline);
+    div.appendChild(why);
+    reviewList.appendChild(div);
+  });
+
+  const now = new Date().toISOString().slice(0, 16).replace('T', ' ');
+  const letterAnswers = answers.map(a => a === null ? '-' : String.fromCharCode(65 + a)).join(',');
+  const summary = [
+    'Scoping for Delivery — ' + (stage === 'post' ? 'Post-course' : 'Pre-course') + ' result',
+    'Name: ' + participantName,
+    'Score: ' + score + '/' + QUESTIONS.length,
+    'Answers (Q1-Q10): ' + letterAnswers,
+    'Submitted: ' + now + ' (local device time)',
+  ].join('\n');
+  document.getElementById('summaryBox').value = summary;
+
+  const FACILITATOR_EMAIL = 'aelmourad@innovationinprocurement.com';
+  const subject = 'Scoping for Delivery — ' + (stage === 'post' ? 'Post-course' : 'Pre-course') + ' result — ' + participantName;
+  const mailtoUrl = 'mailto:' + encodeURIComponent(FACILITATOR_EMAIL) +
+    '?subject=' + encodeURIComponent(subject) +
+    '&body=' + encodeURIComponent(summary);
+  document.getElementById('emailBtn').addEventListener('click', () => {
+    window.location.href = mailtoUrl;
+  });
+
+  document.getElementById('copyBtn').addEventListener('click', () => {
+    navigator.clipboard.writeText(summary).then(() => {
+      const btn = document.getElementById('copyBtn');
+      const original = btn.textContent;
+      btn.textContent = 'Copied';
+      setTimeout(() => { btn.textContent = original; }, 1500);
+    }).catch(() => {
+      document.getElementById('summaryBox').select();
+    });
+  });
+
+  window.scrollTo(0, 0);
+}
+</script>
+</body>
+</html>
